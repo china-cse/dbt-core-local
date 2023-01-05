@@ -65,6 +65,7 @@ class Graph:
             successors.update(self.graph.successors(node))
         return successors
 
+
     def trim_unvisited_nodes(
         self, target_graph: nx.DiGraph, selected_nodes: Set[UniqueId]
     ) -> "Graph":
@@ -86,6 +87,7 @@ class Graph:
                 target_graph.remove_nodes_from(ancestors)
             target_graph.remove_nodes_from(unvisited_nodes)
 
+
     def get_subset_graph(self, selected: Iterable[UniqueId]) -> "Graph":
         """Create and return a new graph that is a shallow copy of the graph,
         but with only the nodes in include_nodes. Transitive edges across
@@ -94,6 +96,23 @@ class Graph:
 
         new_graph = self.graph.copy()
         include_nodes = set(selected)
+        all_nodes = set(new_graph.nodes)
+
+        for singlenode in include_nodes:
+            self.trim_graph(new_graph,singlenode,set(all_nodes),set(include_nodes))
+        
+        all_nodes = set(new_graph.nodes) # reset all_nodes after trim graph
+        remove_nodes = all_nodes - include_nodes # consider all remaining nodes to exclude
+
+        for singlenode in remove_nodes:
+            product_list = list(product(new_graph.predecessors(singlenode),new_graph.successors(singlenode)))
+            non_cyclic_new_edges = [
+                (source, target) for source, target in product_list if source != target
+            ]  # removes cyclic refs
+            new_graph.remove_node(singlenode)
+            if non_cyclic_new_edges:
+                new_graph.add_edges_from(non_cyclic_new_edges)
+
 
         self.trim_unvisited_nodes(new_graph, include_nodes)
 
@@ -107,6 +126,7 @@ class Graph:
             ]
             new_graph.remove_node(node)
             new_graph.add_edges_from(non_cyclic_edges)
+
 
         for node in include_nodes:
             if node not in new_graph:
